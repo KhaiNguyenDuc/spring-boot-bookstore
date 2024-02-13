@@ -1,0 +1,14 @@
+version: '3.7'
+
+# Define services
+services:
+  # App backend service
+  app-backend:
+    # Configuration for building the docker image for the backend service
+    build:
+       dockerfile: Dockerfile
+    ports:
+      - "8080:8080" # Forward the exposed port 8080 on the container to port 8080 on the host machine
+    volumes:
+      - /root/app-logs:/logs  # Bind mount host log directory to container's /logs directory
+
