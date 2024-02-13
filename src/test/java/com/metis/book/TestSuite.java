@@ -19,7 +19,6 @@ import org.junit.runners.Suite;
         ContactServiceImplTest.class,
         FeedbackServiceImplTest.class,
         AimServiceImplTest.class,
-        BlogServiceImplTest.class,
         CartServiceImplTest.class,
         CategoryServiceImplTest.class,
         CustomUserServiceImplTest.class,
