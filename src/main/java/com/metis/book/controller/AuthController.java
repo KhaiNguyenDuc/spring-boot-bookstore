@@ -289,7 +289,7 @@ public class AuthController {
 	}
 
 	private void publishEvent(User user, HttpServletRequest request) {
-		final String appUrl = "http://" + request.getServerName() + ":" + request.getServerPort()
+		final String appUrl = "https://" + request.getServerName()
 				+ request.getContextPath();
 		eventPublisher.publishEvent(new OnRegistrationCompleteEvent(user, request.getLocale(), appUrl));
 	}
