@@ -7,7 +7,6 @@ It has an admin page to manage the entity/
 2. [Diagram](#diagram)
    - 2.1. [Usecase Diagram](#uscase-diagram)
    - 2.2. [Class Diagram](#class-diagram)
-   - 2.3. [ERD Diagram](#erd-diagram)
 3. [UI](#ui)
 ## Information
 
@@ -29,11 +28,7 @@ The site using:
 
 ### Class Diagram
 
-![quiz-guru](https://github.com/KhaiNguyenDuc/quiz-guru/assets/71761537/4fd08c02-e25b-4917-bca3-b7c8c36d1cea)
-
-### ERD diagram
-
-![quiz_guru _erd](https://github.com/KhaiNguyenDuc/quiz-guru/assets/71761537/03996368-a48d-4ac4-b898-18e00677d3b5)
+![image](https://github.com/KhaiNguyenDuc/spring-boot-bookstore/assets/71761537/3abdfa9b-78be-4978-8762-a1359ff43332)
 
 ## UI
 
