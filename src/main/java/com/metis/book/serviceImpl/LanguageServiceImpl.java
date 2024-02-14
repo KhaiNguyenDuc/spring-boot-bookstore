@@ -1,6 +1,5 @@
 package com.metis.book.serviceImpl;
 
-import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -8,12 +7,8 @@ import java.util.Objects;
 
 import javax.validation.Valid;
 
-import com.metis.book.dto.CategoryForm;
-import com.metis.book.model.Category;
-import com.metis.book.model.Image;
 import com.metis.book.repository.UserRepository;
 import com.metis.book.utils.AppConstant;
-import com.metis.book.utils.FileUploadUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

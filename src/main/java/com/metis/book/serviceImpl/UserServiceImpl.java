@@ -1,7 +1,6 @@
 package com.metis.book.serviceImpl;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
@@ -10,6 +9,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
+import com.metis.book.dto.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,10 +17,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.metis.book.dto.CheckoutForm;
-import com.metis.book.dto.ProfileForm;
-import com.metis.book.dto.RegisterForm;
-import com.metis.book.dto.UserEditForm;
 import com.metis.book.model.Cart;
 import com.metis.book.model.Image;
 import com.metis.book.model.PasswordResetToken;
@@ -40,13 +36,15 @@ import com.metis.book.repository.VerificationTokenRepository;
 import com.metis.book.security.UserPrincipal;
 import com.metis.book.service.IUserService;
 import com.metis.book.utils.AppConstant;
-import com.metis.book.utils.FileUploadUtils;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
 public class UserServiceImpl implements IUserService {
+
+	@Autowired
+	AmazonS3Service amazonS3Service;
 
 	@Autowired
 	UserRepository userRepository;
@@ -100,7 +98,7 @@ public class UserServiceImpl implements IUserService {
 		// Create new Image
 		Image imageThumbnail = new Image();
 		imageThumbnail.setThumbnailName("avtThumbnail.jpg");
-		imageThumbnail.setThumbnailURL("E:\\HCMUTE\\School_Project\\bookstore_MetisBook\\uploads\\avtThumbnail.jpg");
+		imageThumbnail.setThumbnailURL("\\uploads\\avtThumbnail.jpg");
 		imageRepository.save(imageThumbnail);
 
 		// Create new User
@@ -281,15 +279,15 @@ public class UserServiceImpl implements IUserService {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
 		User user = userRepository.findById(userPrincipal.getId()).get();
-		Path fileNameAndPath = FileUploadUtils.saveUserImage(file, user.getId());
+		FileResponse fileResponse = amazonS3Service.saveUserImage(file, user.getId());
 
-		Image image = imageRepository.findByUser(user);
+		Image image = user.getImage();
 
 		if (Objects.isNull(image)) {
 			// if user don't have any image
 			Image newImage = new Image();
-			newImage.setTitle(user.getId().toString() + ".png");
-			newImage.setUrl(fileNameAndPath.toString());
+			newImage.setTitle(fileResponse.getFileName());
+			newImage.setUrl(fileResponse.getUrl());
 			imageRepository.save(newImage);
 
 			user.setImage(newImage);
@@ -298,8 +296,9 @@ public class UserServiceImpl implements IUserService {
 			SecurityContextHolder.getContext().setAuthentication(authentication);
 		} else {
 			// if user already have image
-			image.setTitle(user.getId().toString() + ".png");
-			image.setUrl(fileNameAndPath.toString());
+			amazonS3Service.deleteFile(image.getTitle(), AppConstant.UPLOAD_USER_DIRECTORY);
+			image.setTitle(fileResponse.getFileName());
+			image.setUrl(fileResponse.getUrl());
 			imageRepository.save(image);
 
 			// update authenticated user
@@ -416,9 +415,9 @@ public class UserServiceImpl implements IUserService {
 		User user = userRepository.findById(id).get();
 		Image image = user.getImage();
 		if (!file.isEmpty()) {
-			Path fileNameAndPath = FileUploadUtils.saveUserImage(file, id);
-			image.setTitle(user.getId().toString() + ".png");
-			image.setUrl(fileNameAndPath.toString());
+			FileResponse fileResponse = amazonS3Service.saveUserImage(file, id);
+			image.setTitle(fileResponse.getFileName());
+			image.setUrl(fileResponse.getUrl());
 			imageRepository.save(image);
 		}
 
@@ -429,9 +428,9 @@ public class UserServiceImpl implements IUserService {
 		User user = userRepository.findById(Long.parseLong(userId)).get();
 		Image image = user.getImage();
 		if (!file.isEmpty()) {
-			Path fileNameAndPath = FileUploadUtils.saveUserImage(file, Long.parseLong(userId));
-			image.setTitle(userId + ".png");
-			image.setUrl(fileNameAndPath.toString());
+			FileResponse fileResponse = amazonS3Service.saveUserImage(file, Long.parseLong(userId));
+			image.setTitle(fileResponse.getFileName());
+			image.setUrl(fileResponse.getUrl());
 			imageRepository.save(image);
 		}
 

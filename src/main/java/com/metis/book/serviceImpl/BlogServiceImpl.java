@@ -1,11 +1,11 @@
 package com.metis.book.serviceImpl;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import com.metis.book.dto.FileResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -22,13 +22,15 @@ import com.metis.book.repository.BookRepository;
 import com.metis.book.repository.ImageRepository;
 import com.metis.book.service.IBlogService;
 import com.metis.book.utils.AppConstant;
-import com.metis.book.utils.FileUploadUtils;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
 public class BlogServiceImpl implements IBlogService {
+
+	@Autowired
+	AmazonS3Service amazonS3Service;
 
 	@Autowired
 	BlogRepository blogRepository;
@@ -64,10 +66,10 @@ public class BlogServiceImpl implements IBlogService {
 		Blog blogSaved = blogRepository.save(blog);
 
 		if (!blogForm.getFile().isEmpty()) {
-			Path fileNameAndPath = FileUploadUtils.saveBlogImage(blogForm.getFile(), blogSaved.getId());
+			FileResponse fileResponse = amazonS3Service.saveBlogImage(blogForm.getFile(), blogSaved.getId());
 			Image image = new Image();
-			image.setTitle(blogSaved.getId().toString() + ".png");
-			image.setUrl(fileNameAndPath.toString());
+			image.setTitle(fileResponse.getFileName());
+			image.setUrl(fileResponse.getUrl());
 			Image imageSaved = imageRepository.save(image);
 			blogSaved.setImage(imageSaved);
 			blogRepository.save(blogSaved);
@@ -76,7 +78,7 @@ public class BlogServiceImpl implements IBlogService {
 			Image imageThumbnail = new Image();
 			imageThumbnail.setThumbnailName("BlogThumbnail.png");
 			imageThumbnail
-					.setThumbnailURL("E:\\HCMUTE\\School_Project\\bookstore_MetisBook\\uploads\\BlogThumbnail.png");
+					.setThumbnailURL("\\uploads\\BlogThumbnail.png");
 			imageRepository.save(imageThumbnail);
 			blogSaved.setImage(imageThumbnail);
 			blogRepository.save(blogSaved);
@@ -110,13 +112,27 @@ public class BlogServiceImpl implements IBlogService {
 		Blog blogSaved = blogRepository.save(blog);
 
 		if (!Objects.isNull(blogForm.getFile())) {
-			Path fileNameAndPath = FileUploadUtils.saveBlogImage(blogForm.getFile(), blogSaved.getId());
-			Image image = new Image();
-			image.setTitle(blogSaved.getId().toString() + ".png");
-			image.setUrl(fileNameAndPath.toString());
-			Image imageSaved = imageRepository.save(image);
-			blogSaved.setImage(imageSaved);
-			blogRepository.save(blogSaved);
+			Image blogImage = blogSaved.getImage();
+			FileResponse fileResponse = amazonS3Service.saveBlogImage(blogForm.getFile(), blogSaved.getId());
+
+			if (Objects.isNull(blogImage)) {
+				// Create new image
+				Image image = new Image();
+				image.setTitle(fileResponse.getFileName());
+				image.setUrl(fileResponse.getUrl());
+				Image imageSaved = imageRepository.save(image);
+				blogSaved.setImage(imageSaved);
+				blogRepository.save(blogSaved);
+			}else{
+				// update image
+				amazonS3Service.deleteFile(blogImage.getTitle(), AppConstant.UPLOAD_BLOG_DIRECTORY);
+				blogImage.setTitle(fileResponse.getFileName());
+				blogImage.setUrl(fileResponse.getUrl());
+				Image imageSaved = imageRepository.save(blogImage);
+				blogSaved.setImage(imageSaved);
+				blogRepository.save(blogSaved);
+			}
+
 		}
 	}
 

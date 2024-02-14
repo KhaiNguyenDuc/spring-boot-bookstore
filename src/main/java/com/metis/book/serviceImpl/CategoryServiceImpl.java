@@ -1,20 +1,18 @@
 package com.metis.book.serviceImpl;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 import javax.validation.Valid;
 
+import com.metis.book.dto.FileResponse;
 import com.metis.book.model.Image;
 import com.metis.book.repository.ImageRepository;
 import com.metis.book.repository.UserRepository;
 import com.metis.book.utils.AppConstant;
-import com.metis.book.utils.FileUploadUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -34,6 +32,8 @@ public class CategoryServiceImpl implements ICategoryService {
 	ImageRepository imageRepository;
 	@Autowired
 	UserRepository userRepository;
+	@Autowired
+	AmazonS3Service amazonS3Service;
 	@Override
 	public List<Category> getAllCategories() {
 		return categoryRepository.findAll();
@@ -45,10 +45,10 @@ public class CategoryServiceImpl implements ICategoryService {
 		category.setName(categoryForm.getName());
 		Category categorySaved = categoryRepository.save(category);
 		if (!categoryForm.getFile().isEmpty()) {
-			Path fileNameAndPath = FileUploadUtils.saveCategorryImage(categoryForm.getFile(), categorySaved.getId());
+			FileResponse fileResponse = amazonS3Service.saveCategoryImage(categoryForm.getFile(), categorySaved.getId());
 			Image image = new Image();
-			image.setTitle(categorySaved.getId().toString() + ".png");
-			image.setUrl(fileNameAndPath.toString());
+			image.setTitle(fileResponse.getFileName());
+			image.setUrl(fileResponse.getUrl());
 			Image imageSaved = imageRepository.save(image);
 			categorySaved.setImage(imageSaved);
 			categoryRepository.save(categorySaved);
@@ -111,10 +111,11 @@ public class CategoryServiceImpl implements ICategoryService {
 		category.setName(categoryForm.getName());
 		Category categorySaved = categoryRepository.save(category);
 		if (!categoryForm.getFile().isEmpty()) {
-			Path fileNameAndPath = FileUploadUtils.saveCategorryImage(categoryForm.getFile(), categorySaved.getId());
+
+			FileResponse fileResponse = amazonS3Service.saveCategoryImage(categoryForm.getFile(), categorySaved.getId());
 			Image image = new Image();
-			image.setTitle(categorySaved.getId().toString() + ".png");
-			image.setUrl(fileNameAndPath.toString());
+			image.setTitle(fileResponse.getFileName());
+			image.setUrl(fileResponse.getUrl());
 			Image imageSaved = imageRepository.save(image);
 			categorySaved.setImage(imageSaved);
 			categoryRepository.save(categorySaved);

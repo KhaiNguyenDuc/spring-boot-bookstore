@@ -1,35 +1,26 @@
 package com.metis.book.serviceImpl;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
-
+import com.metis.book.dto.FileResponse;
 import com.metis.book.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import com.metis.book.dto.BookForm;
 import com.metis.book.dto.FilterForm;
 import com.metis.book.model.Author;
 import com.metis.book.model.Book;
-import com.metis.book.model.CartItem;
 import com.metis.book.model.Image;
 import com.metis.book.model.Inventory;
 import com.metis.book.model.order.Order;
 import com.metis.book.model.order.OrderItem;
-import com.metis.book.model.order.OrderTrack;
 import com.metis.book.service.IBookService;
 import com.metis.book.utils.AppConstant;
-import com.metis.book.utils.FileUploadUtils;
-import com.metis.book.utils.Swap;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -37,6 +28,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class BookServiceImpl implements IBookService {
 
+	@Autowired
+	AmazonS3Service amazonS3Service;
 	@Autowired
 	AuthorRepository authorRepository;
 	@Autowired
@@ -81,10 +74,10 @@ public class BookServiceImpl implements IBookService {
 
 		Book bookSaved = bookRepository.save(book);
 		if (!bookForm.getFile().isEmpty()) {
-			Path fileNameAndPath = FileUploadUtils.saveBookImage(bookForm.getFile(), bookSaved.getId());
+			FileResponse fileResponse = amazonS3Service.saveBookImage(bookForm.getFile(), bookSaved.getId());
 			Image image = new Image();
-			image.setTitle(bookSaved.getId().toString() + ".png");
-			image.setUrl(fileNameAndPath.toString());
+			image.setTitle(fileResponse.getFileName());
+			image.setUrl(fileResponse.getUrl());
 			Image imageSaved = imageRepository.save(image);
 			bookSaved.setImage(imageSaved);
 			bookRepository.save(bookSaved);
@@ -93,7 +86,7 @@ public class BookServiceImpl implements IBookService {
 			Image imageThumbnail = new Image();
 			imageThumbnail.setThumbnailName("BookThumbnail.png");
 			imageThumbnail
-					.setThumbnailURL("E:\\HCMUTE\\School_Project\\bookstore_MetisBook\\uploads\\BookThumbnail.png");
+					.setThumbnailURL("\\uploads\\BookThumbnail.png");
 			imageRepository.save(imageThumbnail);
 			bookSaved.setImage(imageThumbnail);
 			bookRepository.save(bookSaved);
@@ -262,49 +255,59 @@ public class BookServiceImpl implements IBookService {
 	@Override
 	public void updateBook(BookForm bookForm) throws ParseException, IOException {
 		Book book = bookRepository.findById(Long.parseLong(bookForm.getId())).get();
-		if (Objects.isNull(book)) {
-			log.error(AppConstant.BOOK_NOT_FOUND + bookForm.getId());
-		} else {
-			
-			List<Author> authors = new ArrayList<>();
-			for (String author : bookForm.getAuthors()) {
-				authors.add(authorRepository.findByName(author));
-			}
-			book.setAuthors(authors);
-			
-			try {
-				book.setLanguage(languageRepository.findById(Long.parseLong(bookForm.getLanguage())).get());
-			} catch (Exception e) {
-				System.out.println(bookForm.getLanguage());
-			}
-			
-			book.setDescription(bookForm.getDescription());
-			book.setPrice(Long.parseLong(bookForm.getPrice()));
-			book.setPublisherName(bookForm.getPublisherName());
-			book.setTitle(bookForm.getTitle());
-			book.setPublicationDate(new SimpleDateFormat("yyyy-MM-dd").parse(bookForm.getPublicationDate()));
-			book.setAvailable(bookForm.getAvailable().equals("Còn bán") ? true : false);
-			book.setCategory(categoryRepository.findById(bookForm.getCategory().getId()).get());
-			Inventory inventory = new Inventory();
-			inventory.setQuantiy(Integer.parseInt(bookForm.getQuantity()));
-			inventoryRepository.save(inventory);
-			book.setInventory(inventory);
-			// log.info(book.toString());
+        List<Author> authors = new ArrayList<>();
+        for (String author : bookForm.getAuthors()) {
+            authors.add(authorRepository.findByName(author));
+        }
+        book.setAuthors(authors);
 
-			Book bookSaved = bookRepository.save(book);
-			if (!bookForm.getFile().isEmpty()) {
-				Path fileNameAndPath = FileUploadUtils.saveBookImage(bookForm.getFile(), bookSaved.getId());
+        try {
+            book.setLanguage(languageRepository.findById(Long.parseLong(bookForm.getLanguage())).get());
+        } catch (Exception e) {
+            System.out.println(bookForm.getLanguage());
+        }
+
+        book.setDescription(bookForm.getDescription());
+        book.setPrice(Long.parseLong(bookForm.getPrice()));
+        book.setPublisherName(bookForm.getPublisherName());
+        book.setTitle(bookForm.getTitle());
+        book.setPublicationDate(new SimpleDateFormat("yyyy-MM-dd").parse(bookForm.getPublicationDate()));
+        book.setAvailable(bookForm.getAvailable().equals("Còn bán") ? true : false);
+        book.setCategory(categoryRepository.findById(bookForm.getCategory().getId()).get());
+        Inventory inventory = new Inventory();
+        inventory.setQuantiy(Integer.parseInt(bookForm.getQuantity()));
+        inventoryRepository.save(inventory);
+        book.setInventory(inventory);
+        // log.info(book.toString());
+
+        Book bookSaved = bookRepository.save(book);
+
+        if (!bookForm.getFile().isEmpty()) {
+			Image imageBook = bookSaved.getImage();
+			FileResponse fileResponse = amazonS3Service.saveBookImage(bookForm.getFile(), bookSaved.getId());
+			if(Objects.isNull(imageBook)){
+				// create new image
+
 				Image image = new Image();
-				image.setTitle(bookSaved.getId().toString() + ".png");
-				image.setUrl(fileNameAndPath.toString());
+				image.setTitle(fileResponse.getFileName());
+				image.setUrl(fileResponse.getUrl());
 				Image imageSaved = imageRepository.save(image);
 				bookSaved.setImage(imageSaved);
 				bookRepository.save(bookSaved);
+			}else{
+				// update image
+				amazonS3Service.deleteFile(imageBook.getTitle(), AppConstant.UPLOAD_BOOK_DIRECTORY);
+				imageBook.setTitle(fileResponse.getFileName());
+				imageBook.setUrl(fileResponse.getUrl());
+				Image imageSaved = imageRepository.save(imageBook);
+				bookSaved.setImage(imageSaved);
+				bookRepository.save(bookSaved);
 			}
-		}
-		
 
-	}
+        }
+
+
+    }
 
 	@Override
 	public List<Book> filter(List<Book> books, FilterForm filterForm) {
