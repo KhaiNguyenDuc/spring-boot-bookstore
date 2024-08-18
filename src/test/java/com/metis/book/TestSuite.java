@@ -23,8 +23,6 @@ import org.junit.runners.Suite;
         CategoryServiceImplTest.class,
         CustomUserServiceImplTest.class,
 
-// Thêm các lớp kiểm thử khác nếu cần
 })
 public class TestSuite {
-    // Không cần thêm bất kỳ nội dung nào ở đây
 }
